@@ -33,6 +33,16 @@ export interface LoggingConfig {
   file: string;
 }
 
+export type RuntimeKind = "python" | "cli";
+
+export interface ResolvedRuntime {
+  kind: RuntimeKind;
+  exe: string;
+  args: string[];
+  version: string;
+  cacheHit: boolean;
+}
+
 export interface MempalaceConfig {
   autosave: AutosaveConfig;
   compaction: CompactionConfig;
