@@ -1,4 +1,13 @@
 export type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogContext = Record<string, unknown>;
+
+export interface LogEntry {
+  ts: string;
+  level: LogLevel;
+  source: string;
+  message: string;
+  ctx?: LogContext;
+}
 
 export interface AutosaveConfig {
   enabled: boolean;
