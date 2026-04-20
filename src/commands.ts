@@ -1,8 +1,8 @@
 import { renderDoctorReport, runDoctor } from "./doctor.js";
 import type { Logger } from "./logger.js";
-import type { MempalaceConfig } from "./types.js";
+import type { MempalaceConfig, RuntimePromiseContext } from "./types.js";
 
-interface CommandRegistrationDeps {
+interface CommandRegistrationDeps extends RuntimePromiseContext {
   config: MempalaceConfig;
   logger: Logger;
 }
@@ -20,6 +20,8 @@ export function registerCommands(
   deps: CommandRegistrationDeps,
 ): void {
   const host = pi as CommandHost;
+  void deps.runtimePromise;
+
   const commands: CommandDefinition[] = [
     {
       name: "/mempalace:doctor",

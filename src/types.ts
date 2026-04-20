@@ -51,6 +51,10 @@ export interface CliResult<T = unknown> {
   command: string;
 }
 
+export interface RuntimePromiseContext {
+  runtimePromise: Promise<ResolvedRuntime | null>;
+}
+
 export interface MempalaceConfig {
   autosave: AutosaveConfig;
   compaction: CompactionConfig;
