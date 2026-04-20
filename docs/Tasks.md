@@ -19,7 +19,7 @@ Diese Taskliste leitet sich aus dem Konzept in `docs/pi-mempalace-extension-konz
 
 Nicht-blockierende Hinweise aus den 0.1.0-Reviews. Priorisierung: **Hoch** (UX-spuerbar), **Mittel** (Robustheit), **Niedrig** (interne Sauberkeit).
 
-Stand nach `0.1.7`: Einige High-Priority- und Robustheits-Punkte wurden bereits vorgezogen und sind hier entsprechend als `done` markiert.
+Stand nach `0.2.0`: Alle bisher erfassten Polish-Punkte aus diesem Backlog sind umgesetzt.
 
 | # | Prio | Status | Bereich | Task |
 |---|---|---|---|---|
@@ -31,7 +31,7 @@ Stand nach `0.1.7`: Einige High-Priority- und Robustheits-Punkte wurden bereits 
 | 10 | Niedrig | done | Tools | `mempalace_mine` / `mempalace_init` fallen ohne `path` und `cwd` auf `process.cwd()` der Extension zurueck. Dieser Fallback ist jetzt in den Tool-Descriptions explizit dokumentiert. |
 | 11 | Hoch    | done | Commands | Prompt-Templates escapen User-Input jetzt sauber. Der alte Command-Pfad ist zudem an den aktuellen Plain-Text-CLI-Stand angepasst. |
 | 12 | Mittel  | done | Logger | Zyklische Logger-Kontexte verlieren keine Eintraege mehr. `safeStringify` schuetzt jetzt vor stillen JSON-Fehlern. |
-| 13 | Niedrig | open | Logger | Cross-Prozess-Rotation ist nicht atomar. Das ist nur bei mehreren parallel laufenden Extension-Instanzen relevant. |
+| 13 | Niedrig | done | Logger | Cross-Prozess-Rotation ist jetzt ueber einen einfachen Lock-Mechanismus abgesichert, damit parallele Extension-Instanzen Rotationen sauberer koordinieren. |
 | 14 | Niedrig | done | Hosts | Pi-Event-Handler laufen jetzt ueber einen zentralen Safe-Wrapper, der neben synchronen Fehlern auch Promise-Rejections defensiv behandelt und loggt. |
 | 15 | Hoch    | done | Bootstrap | Der Pi-Bootstrap ist fehlertoleranter und degradiert bei Config- oder Init-Problemen sauberer, statt unklar abzubrechen. |
 | 16 | Mittel  | done | Config | Die Config-Normalisierung ist defensiver. Falsche YAML-Typen fallen jetzt mit Warnings auf Defaults zurueck. |

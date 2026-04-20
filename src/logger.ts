@@ -15,6 +15,9 @@ import type {
 
 const MAX_LOG_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_ROTATED_FILES = 3;
+const LOCK_RETRY_DELAY_MS = 25;
+const LOCK_MAX_ATTEMPTS = 80;
+const LOCK_STALE_MS = 30_000;
 
 const LOG_LEVEL_ORDER: Record<LogLevel, number> = {
   debug: 10,
@@ -80,8 +83,10 @@ function shouldWrite(configuredLevel: LogLevel, entryLevel: LogLevel): boolean {
 async function writeLogLine(logFilePath: string, line: string): Promise<void> {
   try {
     await mkdir(path.dirname(logFilePath), { recursive: true });
-    await rotateIfNeeded(logFilePath, Buffer.byteLength(line, "utf8"));
-    await appendFile(logFilePath, line, "utf8");
+    await withLogFileLock(logFilePath, async () => {
+      await rotateIfNeeded(logFilePath, Buffer.byteLength(line, "utf8"));
+      await appendFile(logFilePath, line, "utf8");
+    });
   } catch {
     // Logging must never crash the extension.
   }
@@ -160,6 +165,74 @@ function safeStringify(value: unknown): string {
   });
 }
 
+async function withLogFileLock(
+  logFilePath: string,
+  work: () => Promise<void>,
+): Promise<void> {
+  const lockPath = getLockPath(logFilePath);
+  await acquireLock(lockPath);
+
+  try {
+    await work();
+  } finally {
+    await releaseLock(lockPath);
+  }
+}
+
+async function acquireLock(lockPath: string): Promise<void> {
+  for (let attempt = 0; attempt < LOCK_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      await mkdir(lockPath);
+      return;
+    } catch (error) {
+      if (!isAlreadyExistsError(error)) {
+        throw error;
+      }
+
+      if (await isStaleLock(lockPath)) {
+        await rm(lockPath, { recursive: true, force: true });
+        continue;
+      }
+
+      await delay(LOCK_RETRY_DELAY_MS);
+    }
+  }
+
+  throw new Error(`Timed out while waiting for logger lock: ${lockPath}`);
+}
+
+async function releaseLock(lockPath: string): Promise<void> {
+  await rm(lockPath, { recursive: true, force: true });
+}
+
+function getLockPath(logFilePath: string): string {
+  return `${logFilePath}.lock`;
+}
+
+async function isStaleLock(lockPath: string): Promise<boolean> {
+  try {
+    const lockStat = await stat(lockPath);
+    return Date.now() - lockStat.mtimeMs > LOCK_STALE_MS;
+  } catch {
+    return false;
+  }
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "EEXIST"
+  );
+}
+
+async function delay(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export const __internal = {
+  getLockPath,
+  isAlreadyExistsError,
   safeStringify,
 };

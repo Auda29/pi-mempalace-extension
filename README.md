@@ -6,9 +6,9 @@ This is a small, Windows-first TypeScript extension that connects Pi to the offi
 
 ## Status
 
-This project is in MVP implementation and real-world Pi integration.
+This project is in active real-world Pi integration and has reached the `0.2.0` polish milestone.
 
-The technical concept still lives in [docs/pi-mempalace-extension-konzept.md](./docs/pi-mempalace-extension-konzept.md), and the repository now contains a Pi-facing extension entry with runtime resolution, CLI execution, agent tools, lifecycle events, logging and doctor diagnostics.
+The technical concept still lives in [docs/pi-mempalace-extension-konzept.md](./docs/pi-mempalace-extension-konzept.md), and the repository now contains a Pi-facing extension entry with runtime resolution, CLI execution, agent tools, lifecycle events, logging and doctor diagnostics that have been validated against a live Pi installation.
 
 ## Goals
 
@@ -23,12 +23,12 @@ The technical concept still lives in [docs/pi-mempalace-extension-konzept.md](./
 The current codebase already includes:
 
 - a cached Python and CLI runtime resolver
-- a single MemPalace CLI wrapper
+- a single MemPalace CLI wrapper aligned with the currently documented plain-text MemPalace CLI
 - six Pi tools: `mempalace_search`, `mempalace_mine`, `mempalace_status`, `mempalace_init`, `mempalace_wake_up`, `mempalace_doctor`
 - Pi lifecycle integration via `before_agent_start`, `context`, `session_before_compact`, `session_start`, `session_shutdown`
 - autosave reminder and pre-compaction ingest logic wired through Pi events
 - a focused doctor tool for setup diagnostics
-- JSONL logging with rotation
+- JSONL logging with rotation and a simple cross-process lock for safer concurrent writes
 - resolver, CLI and hook-focused tests
 
 ## Project Structure
@@ -121,6 +121,8 @@ The extension also hooks into Pi lifecycle events to:
 - remind the agent about autosave after repeated user turns
 - run `mine` before session compaction when enabled
 
+`mempalace_init` is intentionally executed in non-interactive mode with `--yes`, because Pi tools do not provide an interactive TTY. The other tool calls use the documented plain-text CLI flow instead of assuming a `--json` interface.
+
 ## Development
 
 Type-check:
@@ -143,35 +145,15 @@ MEMPALACE_INTEGRATION_TEST=1 npm test
 
 ## Roadmap
 
-### Phase 1
+The original MVP roadmap is complete.
 
-- Set up the repository skeleton
-- Implement runtime resolution
-- Implement CLI execution wrapper
-- Add logging
-- Add the extension entry point
-- Build the first `/mempalace:doctor` command
-
-### Phase 2
-
-- Register tools
-- Register a dedicated Pi extension entry
-- Load config from YAML and environment variables
-
-### Phase 3
-
-- Add autosave reminder hook
-- Add pre-compaction ingest hook
-
-### Phase 4
-
-- Tests added for resolver, CLI and hook internals
-- Validate on real MemPalace installations
-- Prepare and publish the first `0.1.0` release
+Current follow-up work is tracked in [docs/Tasks.md](./docs/Tasks.md) and now focuses on live Pi validation, release polish and any future post-`0.2.0` enhancements.
 
 ## Release Notes
 
-Before publishing `0.1.0`, verify the real MemPalace CLI subcommands against a live installation:
+The package has already been validated against live Pi tool calls for core flows such as `mempalace_init`.
+
+Before future releases, it is still worth verifying the real MemPalace CLI subcommands against a live installation:
 
 - `search`
 - `mine`
