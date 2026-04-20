@@ -6,9 +6,9 @@ This is a small, Windows-first TypeScript extension that connects Pi to the offi
 
 ## Status
 
-This project is in MVP implementation and review.
+This project is in MVP implementation and real-world Pi integration.
 
-The technical concept still lives in [docs/pi-mempalace-extension-konzept.md](./docs/pi-mempalace-extension-konzept.md), but the repository now contains a working implementation skeleton with runtime resolution, CLI execution, tools, commands, hooks, logging and doctor diagnostics.
+The technical concept still lives in [docs/pi-mempalace-extension-konzept.md](./docs/pi-mempalace-extension-konzept.md), and the repository now contains a Pi-facing extension entry with runtime resolution, CLI execution, agent tools, lifecycle events, logging and doctor diagnostics.
 
 ## Goals
 
@@ -24,10 +24,10 @@ The current codebase already includes:
 
 - a cached Python and CLI runtime resolver
 - a single MemPalace CLI wrapper
-- five agent tools: `search`, `mine`, `status`, `init`, `wake-up`
-- slash commands for diagnosis, agent-steering and raw execution
-- two lifecycle hooks: autosave reminder and pre-compaction ingest
-- a focused doctor command for setup diagnostics
+- six Pi tools: `mempalace_search`, `mempalace_mine`, `mempalace_status`, `mempalace_init`, `mempalace_wake_up`, `mempalace_doctor`
+- Pi lifecycle integration via `before_agent_start`, `context`, `session_before_compact`, `session_start`, `session_shutdown`
+- autosave reminder and pre-compaction ingest logic wired through Pi events
+- a focused doctor tool for setup diagnostics
 - JSONL logging with rotation
 - resolver, CLI and hook-focused tests
 
@@ -36,10 +36,10 @@ The current codebase already includes:
 ```text
 src/
   index.ts
+  pi-extension.ts
   resolver.ts
   cli.ts
   tools.ts
-  commands.ts
   hooks.ts
   doctor.ts
   config.ts
@@ -53,8 +53,9 @@ dist/
 
 The architecture follows a few strong constraints:
 
-- Action commands should steer the Pi agent to call MemPalace tools so the results remain in conversation context.
-- Diagnosis commands should run directly for fast setup feedback.
+- Pi should discover the package through `pi.extensions` and load a dedicated extension entry.
+- MemPalace actions should be exposed as real Pi tools so the results remain in conversation context.
+- Setup feedback should be available through a direct diagnostic tool.
 - The extension should rely on the MemPalace CLI only, not MCP bridging or internal Python imports.
 - The runtime should be lazily resolved so Pi can still start even when MemPalace is not installed yet.
 
@@ -80,7 +81,7 @@ npm run build
 - `py -3`, `python3`, `python`
 - or a standalone `mempalace` CLI
 
-4. Install or link the built extension into Pi using your preferred local extension workflow.
+4. Publish or link the package so Pi can discover `./dist/pi-extension.js` through the `pi.extensions` manifest entry.
 
 ## Configuration
 
@@ -94,28 +95,22 @@ Supported environment overrides:
 - `MEMPALACE_LOG_LEVEL`
 - `MEMPALACE_AUTOSAVE_DISABLE=1`
 
-## Commands
+## Pi Tools
 
-Direct diagnosis:
+Pi should expose these directly callable tools:
 
-- `/mempalace:help`
-- `/mempalace:doctor`
+- `mempalace_search`
+- `mempalace_mine`
+- `mempalace_status`
+- `mempalace_init`
+- `mempalace_wake_up`
+- `mempalace_doctor`
 
-Agent-steered actions:
+The extension also hooks into Pi lifecycle events to:
 
-- `/mempalace:init`
-- `/mempalace:mine`
-- `/mempalace:search`
-- `/mempalace:status`
-- `/mempalace:wake-up`
-
-Raw direct execution:
-
-- `/mempalace:init!`
-- `/mempalace:mine!`
-- `/mempalace:search!`
-- `/mempalace:status!`
-- `/mempalace:wake-up!`
+- inject `wake-up` context before agent start
+- remind the agent about autosave after repeated user turns
+- run `mine` before session compaction when enabled
 
 ## Development
 
@@ -151,7 +146,7 @@ MEMPALACE_INTEGRATION_TEST=1 npm test
 ### Phase 2
 
 - Register tools
-- Register slash commands
+- Register a dedicated Pi extension entry
 - Load config from YAML and environment variables
 
 ### Phase 3

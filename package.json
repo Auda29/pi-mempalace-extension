@@ -7,9 +7,15 @@
     "url": "git+https://github.com/Auda29/pi-mempalace-extension.git"
   },
   "type": "module",
-  "main": "dist/index.js",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./pi-extension": "./dist/pi-extension.js"
+  },
   "pi": {
-    "extension": "dist/index.js"
+    "extensions": [
+      "./dist/pi-extension.js"
+    ]
   },
   "publishConfig": {
     "access": "public"

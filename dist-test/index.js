@@ -1,14 +1,10 @@
 import { loadConfig } from "./config.js";
-import { registerCommands } from "./commands.js";
 import { initLogger } from "./logger.js";
 import { resolveRuntime } from "./resolver.js";
-import { registerTools } from "./tools.js";
-import { registerHooks } from "./hooks.js";
-export default async function initExtension(pi) {
-    const context = pi;
+export async function createExtensionRuntime(context = {}) {
     const { config } = await loadConfig(context.projectRoot);
     const logger = initLogger(config.logging);
-    logger.info("extension", "initializing extension", {
+    logger.info("extension", "initializing runtime", {
         projectRoot: context.projectRoot ?? null,
     });
     const runtimePromise = resolveRuntime({
@@ -20,20 +16,15 @@ export default async function initExtension(pi) {
         });
         return null;
     });
-    registerCommands(pi, {
+    return {
         config,
         logger,
         runtimePromise,
-    });
-    registerTools(pi, {
-        config,
-        logger,
-        runtimePromise,
-    });
-    registerHooks(pi, {
-        config,
-        logger,
-        runtimePromise,
-    });
-    logger.info("extension", "extension wiring ready");
+        projectRoot: context.projectRoot,
+    };
+}
+export default async function initExtension(context = {}) {
+    const runtime = await createExtensionRuntime(context);
+    runtime.logger.info("extension", "core runtime ready");
+    return runtime;
 }

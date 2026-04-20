@@ -1,20 +1,27 @@
 import { loadConfig } from "./config.js";
-import { registerCommands } from "./commands.js";
 import { initLogger } from "./logger.js";
 import { resolveRuntime } from "./resolver.js";
-import { registerTools } from "./tools.js";
-import { registerHooks } from "./hooks.js";
 
-interface ExtensionContext {
+export interface ExtensionBootstrapContext {
   projectRoot?: string;
 }
 
-export default async function initExtension(pi: unknown): Promise<void> {
-  const context = pi as ExtensionContext;
+export interface ExtensionRuntime {
+  projectRoot?: string;
+  config: Awaited<ReturnType<typeof loadConfig>>["config"];
+  runtimePromise: ReturnType<typeof resolveRuntime> extends Promise<infer T>
+    ? Promise<T | null>
+    : Promise<null>;
+  logger: ReturnType<typeof initLogger>;
+}
+
+export async function createExtensionRuntime(
+  context: ExtensionBootstrapContext = {},
+): Promise<ExtensionRuntime> {
   const { config } = await loadConfig(context.projectRoot);
   const logger = initLogger(config.logging);
 
-  logger.info("extension", "initializing extension", {
+  logger.info("extension", "initializing runtime", {
     projectRoot: context.projectRoot ?? null,
   });
 
@@ -28,21 +35,18 @@ export default async function initExtension(pi: unknown): Promise<void> {
     return null;
   });
 
-  registerCommands(pi, {
+  return {
     config,
     logger,
     runtimePromise,
-  });
-  registerTools(pi, {
-    config,
-    logger,
-    runtimePromise,
-  });
-  registerHooks(pi, {
-    config,
-    logger,
-    runtimePromise,
-  });
+    projectRoot: context.projectRoot,
+  };
+}
 
-  logger.info("extension", "extension wiring ready");
+export default async function initExtension(
+  context: ExtensionBootstrapContext = {},
+): Promise<ExtensionRuntime> {
+  const runtime = await createExtensionRuntime(context);
+  runtime.logger.info("extension", "core runtime ready");
+  return runtime;
 }

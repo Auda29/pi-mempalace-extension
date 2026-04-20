@@ -1,167 +1,62 @@
 import { runMempalace } from "./cli.js";
+import { renderDoctorReport, runDoctor } from "./doctor.js";
 import type { Logger } from "./logger.js";
-import type { MempalaceConfig, RuntimePromiseContext } from "./types.js";
+import type { MempalaceConfig, ResolvedRuntime } from "./types.js";
 
-interface ToolRegistrationDeps extends RuntimePromiseContext {
+interface ToolRegistrationDeps {
   config: MempalaceConfig;
   logger: Logger;
+  runtimePromise: Promise<ResolvedRuntime | null>;
 }
 
-interface ToolDetails {
-  command: string;
-  durationMs: number;
-  source: "cli";
+interface PiToolResponse {
+  content: Array<{ type: "text"; text: string }>;
+  details?: unknown;
 }
 
-interface ToolResult {
-  success: boolean;
-  result?: unknown;
-  message: string;
-  details?: ToolDetails;
-}
-
-interface ToolDefinition {
+export interface PiToolDefinitionLike {
   name: string;
+  label: string;
   description: string;
-  inputSchema: Record<string, unknown>;
-  execute: (input: Record<string, unknown>) => Promise<ToolResult>;
+  parameters: Record<string, unknown>;
+  execute: (
+    toolCallId: string,
+    params: unknown,
+    signal?: AbortSignal,
+    onUpdate?: unknown,
+    ctx?: unknown,
+  ) => Promise<PiToolResponse>;
 }
 
-type ToolHost = Record<string, unknown>;
+interface ToolSpec {
+  name: string;
+  label: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  execute: (
+    deps: ToolRegistrationDeps,
+    input: Record<string, unknown>,
+    signal?: AbortSignal,
+  ) => Promise<PiToolResponse>;
+}
 
 const SETUP_INCOMPLETE_MESSAGE =
-  "Setup incomplete, run /mempalace:doctor.";
+  "Setup incomplete, run the mempalace_doctor tool.";
 
-export function registerTools(
-  pi: unknown,
-  deps: ToolRegistrationDeps,
-): void {
-  const host = pi as ToolHost;
-  const tools = createToolDefinitions(deps);
-
-  for (const tool of tools) {
-    registerTool(host, tool, deps.logger);
-  }
-
-  void deps.runtimePromise.then((runtime) => {
-    deps.logger.debug("tools", "tool runtime availability checked", {
-      available: runtime !== null,
-    });
-  });
+function textContent(text: string): Array<{ type: "text"; text: string }> {
+  return [{ type: "text", text }];
 }
 
-function createToolDefinitions(deps: ToolRegistrationDeps): ToolDefinition[] {
-  return [
-    {
-      name: "mempalace_search",
-      description: "Search the MemPalace knowledge base.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          query: { type: "string" },
-          cwd: { type: "string" },
-        },
-        required: ["query"],
-        additionalProperties: false,
-      },
-      execute: async (input) => {
-        const query = getRequiredString(input, "query");
-        const cwd = getOptionalString(input, "cwd");
+function formatResultSummary(result: unknown): string {
+  if (typeof result === "string") {
+    return result;
+  }
 
-        return runToolCommand(deps, "mempalace_search", ["search", query], {
-          cwd,
-          json: true,
-          successMessage: `MemPalace search completed for "${query}".`,
-        });
-      },
-    },
-    {
-      name: "mempalace_mine",
-      description: "Mine files or directories into MemPalace.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          path: { type: "string" },
-          cwd: { type: "string" },
-        },
-        additionalProperties: false,
-      },
-      execute: async (input) => {
-        const toolPath = getOptionalString(input, "path");
-        const cwd = getOptionalString(input, "cwd");
-        const targetPath = toolPath ?? cwd ?? process.cwd();
-
-        return runToolCommand(deps, "mempalace_mine", ["mine", targetPath], {
-          cwd,
-          json: true,
-          successMessage: `MemPalace mine completed for "${targetPath}".`,
-        });
-      },
-    },
-    {
-      name: "mempalace_status",
-      description: "Show MemPalace status information.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          cwd: { type: "string" },
-        },
-        additionalProperties: false,
-      },
-      execute: async (input) => {
-        const cwd = getOptionalString(input, "cwd");
-
-        return runToolCommand(deps, "mempalace_status", ["status"], {
-          cwd,
-          json: true,
-          successMessage: "MemPalace status loaded.",
-        });
-      },
-    },
-    {
-      name: "mempalace_init",
-      description: "Initialize a new MemPalace directory.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          path: { type: "string" },
-          cwd: { type: "string" },
-        },
-        additionalProperties: false,
-      },
-      execute: async (input) => {
-        const toolPath = getOptionalString(input, "path");
-        const cwd = getOptionalString(input, "cwd");
-        const targetPath = toolPath ?? cwd ?? process.cwd();
-
-        return runToolCommand(deps, "mempalace_init", ["init", targetPath], {
-          cwd,
-          json: false,
-          successMessage: `MemPalace initialized at "${targetPath}".`,
-        });
-      },
-    },
-    {
-      name: "mempalace_wake_up",
-      description: "Load MemPalace context for a new session.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          cwd: { type: "string" },
-        },
-        additionalProperties: false,
-      },
-      execute: async (input) => {
-        const cwd = getOptionalString(input, "cwd");
-
-        return runToolCommand(deps, "mempalace_wake_up", ["wake-up"], {
-          cwd,
-          json: true,
-          successMessage: "MemPalace wake-up completed.",
-        });
-      },
-    },
-  ];
+  try {
+    return JSON.stringify(result, null, 2);
+  } catch {
+    return String(result);
+  }
 }
 
 async function runToolCommand(
@@ -172,11 +67,12 @@ async function runToolCommand(
     cwd?: string;
     json: boolean;
     successMessage: string;
+    signal?: AbortSignal;
   },
-): Promise<ToolResult> {
+): Promise<PiToolResponse> {
   const runtime = await deps.runtimePromise;
   if (runtime === null) {
-    return createSetupIncompleteResult();
+    throw new Error(SETUP_INCOMPLETE_MESSAGE);
   }
 
   const cliResult = await runMempalace(args, {
@@ -184,6 +80,7 @@ async function runToolCommand(
     json: options.json,
     logger: deps.logger,
     runtimeConfig: deps.config.runtime,
+    signal: options.signal,
   });
 
   if (!cliResult.ok) {
@@ -193,11 +90,7 @@ async function runToolCommand(
       durationMs: cliResult.durationMs,
     });
 
-    return {
-      success: false,
-      message: cliResult.stderr ?? "MemPalace command failed.",
-      details: createToolDetails(cliResult.command, cliResult.durationMs),
-    };
+    throw new Error(cliResult.stderr ?? "MemPalace command failed.");
   }
 
   deps.logger.info(`tool:${toolName}`, "tool execution succeeded", {
@@ -206,129 +99,15 @@ async function runToolCommand(
   });
 
   return {
-    success: true,
-    result: cliResult.data,
-    message: options.successMessage,
-    details: createToolDetails(cliResult.command, cliResult.durationMs),
-  };
-}
-
-function registerTool(
-  pi: ToolHost,
-  tool: ToolDefinition,
-  logger: Logger,
-): void {
-  const handler = async (input: Record<string, unknown> = {}) => {
-    try {
-      return await tool.execute(input);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      logger.warn(`tool:${tool.name}`, "tool input or execution error", {
-        error: message,
-      });
-
-      return {
-        success: false,
-        message,
-      };
-    }
-  };
-
-  const registrationAttempts: Array<() => boolean> = [
-    () =>
-      tryRegisterObjectCall(pi.registerTool, {
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-        handler,
-      }),
-    () =>
-      tryRegisterObjectCall(pi.registerAgentTool, {
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-        handler,
-      }),
-    () =>
-      tryRegisterPositionalCall(
-        pi.registerTool,
-        tool.name,
-        tool.description,
-        tool.inputSchema,
-        handler,
-      ),
-    () =>
-      tryRegisterPositionalCall(
-        pi.registerAgentTool,
-        tool.name,
-        tool.description,
-        tool.inputSchema,
-        handler,
-      ),
-  ];
-
-  for (const attempt of registrationAttempts) {
-    if (attempt()) {
-      logger.info("tools", "registered tool", {
-        name: tool.name,
-      });
-      return;
-    }
-  }
-
-  logger.warn("tools", "unable to register tool with current host API", {
-    name: tool.name,
-  });
-}
-
-function tryRegisterObjectCall(
-  method: unknown,
-  payload: Record<string, unknown>,
-): boolean {
-  if (typeof method !== "function") {
-    return false;
-  }
-
-  try {
-    method(payload);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function tryRegisterPositionalCall(
-  method: unknown,
-  name: string,
-  description: string,
-  inputSchema: Record<string, unknown>,
-  handler: (input?: Record<string, unknown>) => Promise<ToolResult>,
-): boolean {
-  if (typeof method !== "function") {
-    return false;
-  }
-
-  try {
-    method(name, description, inputSchema, handler);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function createSetupIncompleteResult(): ToolResult {
-  return {
-    success: false,
-    message: SETUP_INCOMPLETE_MESSAGE,
-  };
-}
-
-function createToolDetails(command: string, durationMs: number): ToolDetails {
-  return {
-    command,
-    durationMs,
-    source: "cli",
+    content: textContent(
+      [options.successMessage, formatResultSummary(cliResult.data ?? "Done.")].join("\n\n"),
+    ),
+    details: {
+      result: cliResult.data,
+      command: cliResult.command,
+      durationMs: cliResult.durationMs,
+      source: "cli",
+    },
   };
 }
 
@@ -352,4 +131,177 @@ function getOptionalString(
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
     : undefined;
+}
+
+function getToolSpecs(): ToolSpec[] {
+  return [
+    {
+      name: "mempalace_search",
+      label: "MemPalace Search",
+      description: "Search the MemPalace knowledge base.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string" },
+          cwd: { type: "string" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+      execute: async (deps, input, signal) => {
+        const query = getRequiredString(input, "query");
+        const cwd = getOptionalString(input, "cwd");
+
+        return runToolCommand(deps, "mempalace_search", ["search", query], {
+          cwd,
+          json: true,
+          signal,
+          successMessage: `MemPalace search completed for "${query}".`,
+        });
+      },
+    },
+    {
+      name: "mempalace_mine",
+      label: "MemPalace Mine",
+      description: "Mine files or directories into MemPalace.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: { type: "string" },
+          cwd: { type: "string" },
+        },
+        additionalProperties: false,
+      },
+      execute: async (deps, input, signal) => {
+        const toolPath = getOptionalString(input, "path");
+        const cwd = getOptionalString(input, "cwd");
+        const targetPath = toolPath ?? cwd ?? process.cwd();
+
+        return runToolCommand(deps, "mempalace_mine", ["mine", targetPath], {
+          cwd,
+          json: true,
+          signal,
+          successMessage: `MemPalace mine completed for "${targetPath}".`,
+        });
+      },
+    },
+    {
+      name: "mempalace_status",
+      label: "MemPalace Status",
+      description: "Show MemPalace status information.",
+      parameters: {
+        type: "object",
+        properties: {
+          cwd: { type: "string" },
+        },
+        additionalProperties: false,
+      },
+      execute: async (deps, input, signal) => {
+        const cwd = getOptionalString(input, "cwd");
+
+        return runToolCommand(deps, "mempalace_status", ["status"], {
+          cwd,
+          json: true,
+          signal,
+          successMessage: "MemPalace status loaded.",
+        });
+      },
+    },
+    {
+      name: "mempalace_init",
+      label: "MemPalace Init",
+      description: "Initialize a new MemPalace directory.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: { type: "string" },
+          cwd: { type: "string" },
+        },
+        additionalProperties: false,
+      },
+      execute: async (deps, input, signal) => {
+        const toolPath = getOptionalString(input, "path");
+        const cwd = getOptionalString(input, "cwd");
+        const targetPath = toolPath ?? cwd ?? process.cwd();
+
+        return runToolCommand(deps, "mempalace_init", ["init", targetPath], {
+          cwd,
+          json: false,
+          signal,
+          successMessage: `MemPalace initialized at "${targetPath}".`,
+        });
+      },
+    },
+    {
+      name: "mempalace_wake_up",
+      label: "MemPalace Wake Up",
+      description: "Load MemPalace context for a new session.",
+      parameters: {
+        type: "object",
+        properties: {
+          cwd: { type: "string" },
+        },
+        additionalProperties: false,
+      },
+      execute: async (deps, input, signal) => {
+        const cwd = getOptionalString(input, "cwd");
+
+        return runToolCommand(deps, "mempalace_wake_up", ["wake-up"], {
+          cwd,
+          json: true,
+          signal,
+          successMessage: "MemPalace wake-up completed.",
+        });
+      },
+    },
+    {
+      name: "mempalace_doctor",
+      label: "MemPalace Doctor",
+      description: "Run setup diagnostics for the MemPalace extension.",
+      parameters: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+      execute: async (deps) => {
+        const report = await runDoctor({
+          config: deps.config,
+          logger: deps.logger,
+        });
+
+        return {
+          content: textContent(renderDoctorReport(report)),
+          details: report,
+        };
+      },
+    },
+  ];
+}
+
+export function createPiToolDefinitions(
+  bootstrap: Promise<ToolRegistrationDeps>,
+): PiToolDefinitionLike[] {
+  return getToolSpecs().map((tool) => ({
+    name: tool.name,
+    label: tool.label,
+    description: tool.description,
+    parameters: tool.parameters,
+    async execute(_toolCallId, params, signal) {
+      const deps = await bootstrap;
+
+      try {
+        return await tool.execute(
+          deps,
+          (params ?? {}) as Record<string, unknown>,
+          signal,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        deps.logger.warn(`tool:${tool.name}`, "tool input or execution error", {
+          error: message,
+        });
+        throw error;
+      }
+    },
+  }));
 }
