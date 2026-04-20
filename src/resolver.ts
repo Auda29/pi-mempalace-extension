@@ -16,8 +16,15 @@ const PROBE_TIMEOUT_MS = 5_000;
 const CACHE_FILENAME = "mempalace-lite-resolver.json";
 const PYTHON_PROBE = [
   "import json, sys",
+  "from importlib.metadata import PackageNotFoundError, version as package_version",
   "import mempalace",
-  "print(json.dumps({'version': mempalace.__version__, 'exe': sys.executable}))",
+  "try:",
+  "    resolved_version = getattr(mempalace, '__version__', None) or package_version('mempalace')",
+  "except PackageNotFoundError:",
+  "    raise RuntimeError('mempalace package metadata is not installed')",
+  "if not resolved_version:",
+  "    raise RuntimeError('mempalace version metadata is unavailable')",
+  "print(json.dumps({'version': resolved_version, 'exe': sys.executable}))",
 ].join("; ");
 
 interface ResolveRuntimeOptions {

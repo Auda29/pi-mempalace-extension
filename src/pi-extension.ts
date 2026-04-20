@@ -157,12 +157,12 @@ async function buildWakeUpPrompt(runtime: ExtensionRuntime): Promise<string | nu
   }
 
   const result = await runMempalace(["wake-up"], {
-    json: true,
+    json: false,
     logger: runtime.logger,
     runtimeConfig: runtime.config.runtime,
   });
 
-  if (!result.ok || result.data === undefined) {
+  if (!result.ok || !result.stdout) {
     runtime.logger.warn("pi-extension", "wake-up context load failed", {
       stderr: result.stderr ?? null,
       command: result.command,
@@ -172,7 +172,7 @@ async function buildWakeUpPrompt(runtime: ExtensionRuntime): Promise<string | nu
 
   return [
     "MemPalace wake-up context:",
-    safeJson(result.data),
+    result.stdout,
   ].join("\n");
 }
 
@@ -188,7 +188,7 @@ async function runPreCompactionIngest(
   const targetPath = resolvePreIngestTarget(runtime.config, event);
   const result = await runMempalace(["mine", targetPath], {
     cwd: event.cwd,
-    json: true,
+    json: false,
     logger: runtime.logger,
     runtimeConfig: runtime.config.runtime,
     timeoutMs: runtime.config.compaction.timeoutMs,

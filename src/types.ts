@@ -46,6 +46,7 @@ export interface ResolvedRuntime {
 export interface CliResult<T = unknown> {
   ok: boolean;
   data?: T;
+  stdout?: string;
   stderr?: string;
   durationMs: number;
   command: string;

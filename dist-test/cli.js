@@ -51,6 +51,7 @@ export async function runMempalace(args, options = {}) {
             return {
                 ok: true,
                 data: undefined,
+                stdout: normalizeStdout(result.stdout),
                 stderr,
                 durationMs,
                 command,
@@ -61,6 +62,7 @@ export async function runMempalace(args, options = {}) {
             return {
                 ok: true,
                 data,
+                stdout: normalizeStdout(result.stdout),
                 stderr,
                 durationMs,
                 command,
@@ -121,6 +123,10 @@ function collectJsonParseError(stdout, stderr) {
     }
     return stderr ?? "Failed to parse JSON output from MemPalace.";
 }
+function normalizeStdout(stdout) {
+    const normalized = stdout.trim();
+    return normalized.length > 0 ? normalized : undefined;
+}
 function buildTimeoutMessage(timeoutMs, stderr) {
     const baseMessage = `Command timed out after ${timeoutMs} ms.`;
     if (!stderr) {
@@ -145,4 +151,5 @@ export const __internal = {
     buildTimeoutMessage,
     collectStderr,
     collectJsonParseError,
+    normalizeStdout,
 };

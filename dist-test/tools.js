@@ -15,6 +15,15 @@ function formatResultSummary(result) {
         return String(result);
     }
 }
+function formatToolOutput(cliResult) {
+    if (cliResult.data !== undefined) {
+        return formatResultSummary(cliResult.data);
+    }
+    if (cliResult.stdout) {
+        return cliResult.stdout;
+    }
+    return "Done.";
+}
 async function runToolCommand(deps, toolName, args, options) {
     const runtime = await deps.runtimePromise;
     if (runtime === null) {
@@ -41,9 +50,10 @@ async function runToolCommand(deps, toolName, args, options) {
         durationMs: cliResult.durationMs,
     });
     return {
-        content: textContent([options.successMessage, formatResultSummary(cliResult.data ?? "Done.")].join("\n\n")),
+        content: textContent([options.successMessage, formatToolOutput(cliResult)].join("\n\n")),
         details: {
             result: cliResult.data,
+            stdout: cliResult.stdout ?? null,
             command: cliResult.command,
             durationMs: cliResult.durationMs,
             source: "cli",
@@ -83,7 +93,7 @@ function getToolSpecs() {
                 const cwd = getOptionalString(input, "cwd");
                 return runToolCommand(deps, "mempalace_search", ["search", query], {
                     cwd,
-                    json: true,
+                    json: false,
                     signal,
                     successMessage: `MemPalace search completed for "${query}".`,
                 });
@@ -107,7 +117,7 @@ function getToolSpecs() {
                 const targetPath = toolPath ?? cwd ?? process.cwd();
                 return runToolCommand(deps, "mempalace_mine", ["mine", targetPath], {
                     cwd,
-                    json: true,
+                    json: false,
                     signal,
                     successMessage: `MemPalace mine completed for "${targetPath}".`,
                 });
@@ -128,7 +138,7 @@ function getToolSpecs() {
                 const cwd = getOptionalString(input, "cwd");
                 return runToolCommand(deps, "mempalace_status", ["status"], {
                     cwd,
-                    json: true,
+                    json: false,
                     signal,
                     successMessage: "MemPalace status loaded.",
                 });
@@ -173,7 +183,7 @@ function getToolSpecs() {
                 const cwd = getOptionalString(input, "cwd");
                 return runToolCommand(deps, "mempalace_wake_up", ["wake-up"], {
                     cwd,
-                    json: true,
+                    json: false,
                     signal,
                     successMessage: "MemPalace wake-up completed.",
                 });

@@ -54,3 +54,8 @@ test("normalizeCliError upgrades interactive EOF failures to a clearer message",
   assert.match(normalized, /requested interactive input/i);
   assert.match(normalized, /--yes/);
 });
+
+test("normalizeStdout trims output and drops empty strings", () => {
+  assert.equal(cliInternal.normalizeStdout("  hello  "), "hello");
+  assert.equal(cliInternal.normalizeStdout("   "), undefined);
+});

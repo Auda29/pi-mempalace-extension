@@ -59,6 +59,21 @@ function formatResultSummary(result: unknown): string {
   }
 }
 
+function formatToolOutput(cliResult: {
+  data?: unknown;
+  stdout?: string;
+}): string {
+  if (cliResult.data !== undefined) {
+    return formatResultSummary(cliResult.data);
+  }
+
+  if (cliResult.stdout) {
+    return cliResult.stdout;
+  }
+
+  return "Done.";
+}
+
 async function runToolCommand(
   deps: ToolRegistrationDeps,
   toolName: string,
@@ -101,10 +116,11 @@ async function runToolCommand(
 
   return {
     content: textContent(
-      [options.successMessage, formatResultSummary(cliResult.data ?? "Done.")].join("\n\n"),
+      [options.successMessage, formatToolOutput(cliResult)].join("\n\n"),
     ),
     details: {
       result: cliResult.data,
+      stdout: cliResult.stdout ?? null,
       command: cliResult.command,
       durationMs: cliResult.durationMs,
       source: "cli",
@@ -155,7 +171,7 @@ function getToolSpecs(): ToolSpec[] {
 
         return runToolCommand(deps, "mempalace_search", ["search", query], {
           cwd,
-          json: true,
+          json: false,
           signal,
           successMessage: `MemPalace search completed for "${query}".`,
         });
@@ -181,7 +197,7 @@ function getToolSpecs(): ToolSpec[] {
 
         return runToolCommand(deps, "mempalace_mine", ["mine", targetPath], {
           cwd,
-          json: true,
+          json: false,
           signal,
           successMessage: `MemPalace mine completed for "${targetPath}".`,
         });
@@ -203,7 +219,7 @@ function getToolSpecs(): ToolSpec[] {
 
         return runToolCommand(deps, "mempalace_status", ["status"], {
           cwd,
-          json: true,
+          json: false,
           signal,
           successMessage: "MemPalace status loaded.",
         });
@@ -251,7 +267,7 @@ function getToolSpecs(): ToolSpec[] {
 
         return runToolCommand(deps, "mempalace_wake_up", ["wake-up"], {
           cwd,
-          json: true,
+          json: false,
           signal,
           successMessage: "MemPalace wake-up completed.",
         });

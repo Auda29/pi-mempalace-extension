@@ -77,7 +77,7 @@ export function registerCommands(
       description: "Run MemPalace mine directly without an agent round-trip.",
       execute: async (...args) =>
         runRawCommand(deps, "mine", extractCommandText(args), {
-          json: true,
+          json: false,
         }),
     },
     {
@@ -96,7 +96,7 @@ export function registerCommands(
       description: "Run MemPalace search directly without an agent round-trip.",
       execute: async (...args) =>
         runRawCommand(deps, "search", extractCommandText(args), {
-          json: true,
+          json: false,
         }),
     },
     {
@@ -110,7 +110,7 @@ export function registerCommands(
       description: "Run MemPalace status directly without an agent round-trip.",
       execute: async () =>
         runDirectCliCommand(deps, "status", ["status"], {
-          json: true,
+          json: false,
         }),
     },
     {
@@ -124,7 +124,7 @@ export function registerCommands(
       description: "Run MemPalace wake-up directly without an agent round-trip.",
       execute: async () =>
         runDirectCliCommand(deps, "wake-up", ["wake-up"], {
-          json: true,
+          json: false,
         }),
     },
   ];
@@ -291,7 +291,7 @@ function buildSearchPrompt(inputText: string): string {
 
   return [
     "[pi-mempalace] Use the mempalace_search tool to search the palace for:",
-    `query: "${query}"`,
+    `query: "${escapePromptValue(query)}"`,
     "",
     "Show the top results to me, then summarize the most relevant ones.",
   ].join("\n");
@@ -302,7 +302,7 @@ function buildInitPrompt(inputText: string): string {
 
   return [
     "[pi-mempalace] Use the mempalace_init tool to initialize a palace directory.",
-    `path: "${targetPath}"`,
+    `path: "${escapePromptValue(targetPath)}"`,
     "",
     "Then confirm where the palace was initialized.",
   ].join("\n");
@@ -313,10 +313,14 @@ function buildMinePrompt(inputText: string): string {
 
   return [
     "[pi-mempalace] Use the mempalace_mine tool to mine content into the palace.",
-    `path: "${targetPath}"`,
+    `path: "${escapePromptValue(targetPath)}"`,
     "",
     "Then summarize what was ingested or report any issues.",
   ].join("\n");
+}
+
+function escapePromptValue(value: string): string {
+  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 function buildStatusPrompt(): string {
