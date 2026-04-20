@@ -213,7 +213,7 @@ async function checkMempalaceVersionCommand(
   try {
     const { stdout, stderr } = await execFile(
       runtime.exe,
-      [...runtime.args, "--version"],
+      getMempalaceCommandArgs(runtime, ["--version"]),
       {
         env:
           runtime.kind === "python"
@@ -407,6 +407,24 @@ function getPythonLauncherArgs(runtime: ResolvedRuntime): string[] {
   }
 
   return runtime.args;
+}
+
+function getMempalaceCommandArgs(
+  runtime: ResolvedRuntime,
+  extraArgs: string[],
+): string[] {
+  if (runtime.kind !== "python") {
+    return [...runtime.args, ...extraArgs];
+  }
+
+  const baseArgs =
+    runtime.args.length >= 2 &&
+    runtime.args.at(-2) === "-m" &&
+    runtime.args.at(-1) === "mempalace"
+      ? runtime.args
+      : [...runtime.args, "-m", "mempalace"];
+
+  return [...baseArgs, ...extraArgs];
 }
 
 function parsePythonVersion(

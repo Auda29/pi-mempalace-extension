@@ -91,7 +91,7 @@ export async function resolveRuntime(
       });
 
       return {
-        ...probe.runtime,
+        ...normalizeResolvedRuntime(probe.runtime),
         cacheHit: false,
       };
     } catch (error) {
@@ -337,10 +337,13 @@ async function readValidCache(logger?: Logger): Promise<ResolvedRuntime | null> 
   }
 
   return {
-    kind: cache.kind,
-    exe: cache.exe,
-    args: cache.args,
-    version: cache.version,
+    ...normalizeResolvedRuntime({
+      kind: cache.kind,
+      exe: cache.exe,
+      args: cache.args,
+      version: cache.version,
+      cacheHit: true,
+    }),
     cacheHit: true,
   };
 }
@@ -415,4 +418,31 @@ async function pathExists(targetPath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function normalizeResolvedRuntime(runtime: Omit<ResolvedRuntime, "cacheHit"> | ResolvedRuntime):
+  Omit<ResolvedRuntime, "cacheHit"> {
+  if (runtime.kind !== "python") {
+    return {
+      kind: runtime.kind,
+      exe: runtime.exe,
+      args: runtime.args,
+      version: runtime.version,
+    };
+  }
+
+  return {
+    kind: runtime.kind,
+    exe: runtime.exe,
+    args: ensurePythonRuntimeArgs(runtime.args),
+    version: runtime.version,
+  };
+}
+
+function ensurePythonRuntimeArgs(args: string[]): string[] {
+  if (args.length >= 2 && args.at(-2) === "-m" && args.at(-1) === "mempalace") {
+    return args;
+  }
+
+  return [...args, "-m", "mempalace"];
 }
