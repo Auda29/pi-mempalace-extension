@@ -61,19 +61,21 @@ The architecture follows a few strong constraints:
 
 ## Installation
 
-1. Install project dependencies:
+### As a Pi package
+
+Build and publish or pack the package, then install it into Pi:
 
 ```bash
-npm install
+pi install npm:pi-mempalace-extension
 ```
 
-2. Build the extension bundle:
+The package ships a Pi manifest in `package.json` and registers:
 
-```bash
-npm run build
-```
+- the extension entry at `./dist/pi-extension.js`
 
-3. Make sure MemPalace is available either through:
+Pi discovers the extension from the manifest and loads it automatically.
+
+Make sure MemPalace is available through one of these runtime paths:
 
 - `MEMPALACE_PYTHON`
 - `MEMPALACE_VENV`
@@ -81,7 +83,14 @@ npm run build
 - `py -3`, `python3`, `python`
 - or a standalone `mempalace` CLI
 
-4. Publish or link the package so Pi can discover `./dist/pi-extension.js` through the `pi.extensions` manifest entry.
+### For local development
+
+```bash
+npm install
+npm run build
+```
+
+The package also exports the core runtime bootstrap from `./dist/index.js` for local or non-Pi integration.
 
 ## Configuration
 
