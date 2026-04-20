@@ -8,7 +8,7 @@ This repository currently starts from a technical concept and is intended to bec
 
 This project is in the concept and scaffolding phase.
 
-The current source of truth is [pi-mempalace-extension-konzept.md](./pi-mempalace-extension-konzept.md).
+The current source of truth is [docs/pi-mempalace-extension-konzept.md](./docs/pi-mempalace-extension-konzept.md).
 
 ## Goals
 
@@ -88,7 +88,7 @@ The planned architecture follows a few strong constraints:
 
 Implementation has not been added yet. To begin development:
 
-1. Review the concept document.
+1. Review the concept document in [`docs/`](./docs/README.md).
 2. Scaffold the TypeScript project files described there.
 3. Build the runtime resolver and doctor command first.
 4. Test against a real MemPalace installation on Windows.
@@ -97,11 +97,11 @@ Implementation has not been added yet. To begin development:
 
 Contributions are welcome while the project is still taking shape.
 
-Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening larger changes.
+Please read [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) before opening larger changes.
 
 ## Security
 
-If you discover a security issue, please follow [SECURITY.md](./SECURITY.md).
+If you discover a security issue, please follow [docs/SECURITY.md](./docs/SECURITY.md).
 
 ## License
 

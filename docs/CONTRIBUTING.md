@@ -4,7 +4,7 @@ Thanks for contributing to `pi-mempalace-extension`.
 
 ## Before You Start
 
-- Read [README.md](./README.md)
+- Read [../README.md](../README.md)
 - Read [pi-mempalace-extension-konzept.md](./pi-mempalace-extension-konzept.md)
 - Prefer small, focused pull requests
 - Discuss larger architectural changes before implementing them
