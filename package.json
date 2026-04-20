@@ -1,0 +1,39 @@
+{
+  "name": "pi-mempalace-extension",
+  "version": "0.1.0",
+  "description": "Lean MemPalace integration for the Pi coding agent",
+  "type": "module",
+  "main": "dist/index.js",
+  "pi": {
+    "extension": "dist/index.js"
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "check": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "keywords": [
+    "pi",
+    "mempalace",
+    "extension",
+    "typescript"
+  ],
+  "license": "MIT",
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "execa": "^9.6.0",
+    "yaml": "^2.8.0"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": ">=0.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "esbuild": "^0.25.3",
+    "typescript": "^5.8.3"
+  }
+}
