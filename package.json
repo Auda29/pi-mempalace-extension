@@ -7,10 +7,14 @@
   "pi": {
     "extension": "dist/index.js"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "node esbuild.config.mjs",
     "check": "tsc --noEmit",
-    "test": "tsc -p tsconfig.test.json && node --test tests/*.test.mjs"
+    "test": "tsc -p tsconfig.test.json && node --test tests/*.test.mjs",
+    "prepublishOnly": "npm run check && npm test && npm run build"
   },
   "keywords": [
     "pi",

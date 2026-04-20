@@ -29,7 +29,7 @@ The current codebase already includes:
 - two lifecycle hooks: autosave reminder and pre-compaction ingest
 - a focused doctor command for setup diagnostics
 - JSONL logging with rotation
-- initial resolver and CLI-focused tests
+- resolver, CLI and hook-focused tests
 
 ## Project Structure
 
@@ -161,9 +161,26 @@ MEMPALACE_INTEGRATION_TEST=1 npm test
 
 ### Phase 4
 
-- Add tests
+- Tests added for resolver, CLI and hook internals
 - Validate on real MemPalace installations
-- Publish the first `0.1.0` release
+- Prepare and publish the first `0.1.0` release
+
+## Release Notes
+
+Before publishing `0.1.0`, verify the real MemPalace CLI subcommands against a live installation:
+
+- `search`
+- `mine`
+- `status`
+- `init`
+- `wake-up`
+
+The package is prepared for publish with:
+
+- `npm run check`
+- `npm test`
+- `npm run build`
+- `npm publish`
 
 ## Contributing
 
