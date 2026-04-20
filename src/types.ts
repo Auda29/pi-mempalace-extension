@@ -43,6 +43,14 @@ export interface ResolvedRuntime {
   cacheHit: boolean;
 }
 
+export interface CliResult<T = unknown> {
+  ok: boolean;
+  data?: T;
+  stderr?: string;
+  durationMs: number;
+  command: string;
+}
+
 export interface MempalaceConfig {
   autosave: AutosaveConfig;
   compaction: CompactionConfig;
