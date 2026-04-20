@@ -21,3 +21,9 @@ test("ensurePythonRuntimeArgs appends -m mempalace once", () => {
     ["-3", "-m", "mempalace"],
   );
 });
+
+test("normalizeEnvPath expands home-style inputs", () => {
+  const expanded = resolverInternal.normalizeEnvPath("~/mempalace/python.exe");
+  assert.ok(typeof expanded === "string");
+  assert.match(expanded, /mempalace[\\/]python\.exe$/);
+});

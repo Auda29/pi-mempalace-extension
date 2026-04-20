@@ -92,7 +92,7 @@ function getToolSpecs() {
         {
             name: "mempalace_mine",
             label: "MemPalace Mine",
-            description: "Mine files or directories into MemPalace.",
+            description: "Mine files or directories into MemPalace. If neither path nor cwd is provided, the extension process working directory is used.",
             parameters: {
                 type: "object",
                 properties: {
@@ -137,7 +137,7 @@ function getToolSpecs() {
         {
             name: "mempalace_init",
             label: "MemPalace Init",
-            description: "Initialize a new MemPalace directory.",
+            description: "Initialize a new MemPalace directory. If neither path nor cwd is provided, the extension process working directory is used.",
             parameters: {
                 type: "object",
                 properties: {

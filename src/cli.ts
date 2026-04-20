@@ -46,7 +46,7 @@ export async function runMempalace<T = unknown>(
       env: runtimeEnv,
       input: options.input,
       reject: false,
-      signal: options.signal,
+      cancelSignal: options.signal,
       stdin: options.input === undefined ? "ignore" : "pipe",
       timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       windowsHide: true,
@@ -66,11 +66,9 @@ export async function runMempalace<T = unknown>(
     if (result.exitCode !== 0 || result.failed || result.timedOut) {
       return {
         ok: false,
-        stderr:
-          stderr ||
-          (result.timedOut
-            ? `Command timed out after ${options.timeoutMs ?? DEFAULT_TIMEOUT_MS} ms.`
-            : "MemPalace command failed."),
+        stderr: result.timedOut
+          ? buildTimeoutMessage(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, stderr)
+          : stderr || "MemPalace command failed.",
         durationMs,
         command,
       };
@@ -168,8 +166,21 @@ function collectJsonParseError(
   return stderr ?? "Failed to parse JSON output from MemPalace.";
 }
 
+function buildTimeoutMessage(
+  timeoutMs: number,
+  stderr: string | undefined,
+): string {
+  const baseMessage = `Command timed out after ${timeoutMs} ms.`;
+  if (!stderr) {
+    return baseMessage;
+  }
+
+  return `${baseMessage}\n${stderr}`;
+}
+
 export const __internal = {
   buildCommandArgs,
+  buildTimeoutMessage,
   collectStderr,
   collectJsonParseError,
 };

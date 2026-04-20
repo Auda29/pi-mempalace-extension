@@ -5,6 +5,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
+import { expandHomeDir } from "./config.js";
 import type { Logger } from "./logger.js";
 import type { ResolvedRuntime, RuntimeConfig, RuntimeKind } from "./types.js";
 
@@ -136,8 +137,10 @@ function buildRuntimeCandidates(
   const candidates: RuntimeCandidate[] = [];
   const seen = new Set<string>();
   const pythonOverride =
-    runtimeConfig?.pythonOverride?.trim() || env.MEMPALACE_PYTHON?.trim() || null;
-  const venvDir = env.MEMPALACE_VENV?.trim() || null;
+    runtimeConfig?.pythonOverride?.trim() ||
+    normalizeEnvPath(env.MEMPALACE_PYTHON) ||
+    null;
+  const venvDir = normalizeEnvPath(env.MEMPALACE_VENV);
   const defaultVenvPython = getDefaultVenvPythonPath();
 
   const addCandidate = (
@@ -187,6 +190,19 @@ function buildRuntimeCandidates(
   addCandidate("cli", mempalaceBinary, [], "standalone-cli");
 
   return candidates;
+}
+
+function normalizeEnvPath(input: string | undefined): string | null {
+  if (!input) {
+    return null;
+  }
+
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return expandHomeDir(trimmed);
 }
 
 async function validateCandidate(
@@ -449,4 +465,5 @@ function ensurePythonRuntimeArgs(args: string[]): string[] {
 
 export const __internal = {
   ensurePythonRuntimeArgs,
+  normalizeEnvPath,
 };

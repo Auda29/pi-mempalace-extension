@@ -34,3 +34,14 @@ test("buildCommandArgs preserves runtime-prefixed mempalace invocation", () => {
     ["-m", "mempalace", "status"],
   );
 });
+
+test("buildTimeoutMessage includes stderr when available", () => {
+  assert.match(
+    cliInternal.buildTimeoutMessage(15000, "partial stderr"),
+    /partial stderr/,
+  );
+  assert.equal(
+    cliInternal.buildTimeoutMessage(15000, undefined),
+    "Command timed out after 15000 ms.",
+  );
+});

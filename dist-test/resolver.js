@@ -5,6 +5,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
+import { expandHomeDir } from "./config.js";
 const execFile = promisify(execFileCallback);
 const DEFAULT_ENCODING = "utf-8";
 const PROBE_TIMEOUT_MS = 5_000;
@@ -81,8 +82,10 @@ export function getResolverCachePath() {
 function buildRuntimeCandidates(env, runtimeConfig) {
     const candidates = [];
     const seen = new Set();
-    const pythonOverride = runtimeConfig?.pythonOverride?.trim() || env.MEMPALACE_PYTHON?.trim() || null;
-    const venvDir = env.MEMPALACE_VENV?.trim() || null;
+    const pythonOverride = runtimeConfig?.pythonOverride?.trim() ||
+        normalizeEnvPath(env.MEMPALACE_PYTHON) ||
+        null;
+    const venvDir = normalizeEnvPath(env.MEMPALACE_VENV);
     const defaultVenvPython = getDefaultVenvPythonPath();
     const addCandidate = (kind, exe, args, source) => {
         const key = `${kind}:${exe}:${args.join("\u0000")}`;
@@ -113,6 +116,16 @@ function buildRuntimeCandidates(env, runtimeConfig) {
     const mempalaceBinary = process.platform === "win32" ? "mempalace.exe" : "mempalace";
     addCandidate("cli", mempalaceBinary, [], "standalone-cli");
     return candidates;
+}
+function normalizeEnvPath(input) {
+    if (!input) {
+        return null;
+    }
+    const trimmed = input.trim();
+    if (!trimmed) {
+        return null;
+    }
+    return expandHomeDir(trimmed);
 }
 async function validateCandidate(candidate, env, runtimeConfig) {
     if (candidate.kind === "python") {
@@ -317,4 +330,5 @@ function ensurePythonRuntimeArgs(args) {
 }
 export const __internal = {
     ensurePythonRuntimeArgs,
+    normalizeEnvPath,
 };
