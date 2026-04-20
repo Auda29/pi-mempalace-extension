@@ -18,12 +18,20 @@ export interface ExtensionRuntime {
 export async function createExtensionRuntime(
   context: ExtensionBootstrapContext = {},
 ): Promise<ExtensionRuntime> {
-  const { config } = await loadConfig(context.projectRoot);
+  const loadedConfig = await loadConfig(context.projectRoot);
+  const { config } = loadedConfig;
   const logger = initLogger(config.logging);
 
   logger.info("extension", "initializing runtime", {
     projectRoot: context.projectRoot ?? null,
   });
+
+  if (loadedConfig.warnings.length > 0) {
+    logger.warn("extension", "config warnings detected", {
+      warnings: loadedConfig.warnings,
+      configPath: loadedConfig.source.path,
+    });
+  }
 
   const runtimePromise = resolveRuntime({
     runtimeConfig: config.runtime,

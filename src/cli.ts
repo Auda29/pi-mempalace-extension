@@ -1,7 +1,7 @@
 import { execa } from "execa";
 import { buildResolverEnv, resolveRuntime } from "./resolver.js";
 import type { Logger } from "./logger.js";
-import type { CliResult, RuntimeConfig } from "./types.js";
+import type { CliResult, ResolvedRuntime, RuntimeConfig } from "./types.js";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
@@ -13,6 +13,7 @@ export interface RunMempalaceOptions {
   signal?: AbortSignal;
   env?: NodeJS.ProcessEnv;
   runtimeConfig?: Pick<RuntimeConfig, "pythonOverride" | "encoding">;
+  runtime?: ResolvedRuntime | null;
   logger?: Logger;
 }
 
@@ -24,11 +25,13 @@ export async function runMempalace<T = unknown>(
   const env = options.env ?? process.env;
 
   try {
-    const runtime = await resolveRuntime({
-      env,
-      logger: options.logger,
-      runtimeConfig: options.runtimeConfig,
-    });
+    const runtime =
+      options.runtime ??
+      (await resolveRuntime({
+        env,
+        logger: options.logger,
+        runtimeConfig: options.runtimeConfig,
+      }));
 
     const finalArgs = buildCommandArgs(runtime.args, args, options.json);
     const command = formatCommand(runtime.exe, finalArgs);

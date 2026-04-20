@@ -48,7 +48,7 @@ export function initLogger(config: LoggingConfig): Logger {
       ...(ctx === undefined ? {} : { ctx }),
     };
 
-    const line = `${JSON.stringify(entry)}\n`;
+    const line = `${safeStringify(entry)}\n`;
     writeQueue = writeQueue
       .catch(() => undefined)
       .then(async () => writeLogLine(logFilePath, line));
@@ -135,3 +135,31 @@ async function fileExists(targetPath: string): Promise<boolean> {
     return false;
   }
 }
+
+function safeStringify(value: unknown): string {
+  const seen = new WeakSet<object>();
+
+  return JSON.stringify(value, (_key, currentValue) => {
+    if (typeof currentValue === "object" && currentValue !== null) {
+      if (seen.has(currentValue)) {
+        return "[Circular]";
+      }
+
+      seen.add(currentValue);
+    }
+
+    if (currentValue instanceof Error) {
+      return {
+        name: currentValue.name,
+        message: currentValue.message,
+        stack: currentValue.stack,
+      };
+    }
+
+    return currentValue;
+  });
+}
+
+export const __internal = {
+  safeStringify,
+};

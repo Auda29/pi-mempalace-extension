@@ -51,6 +51,11 @@ export interface CliResult<T = unknown> {
   command: string;
 }
 
+export interface ConfigWarning {
+  path: string;
+  message: string;
+}
+
 export interface RuntimePromiseContext {
   runtimePromise: Promise<ResolvedRuntime | null>;
 }
@@ -77,6 +82,7 @@ export interface ConfigSourceInfo {
 export interface LoadedConfig {
   config: MempalaceConfig;
   source: ConfigSourceInfo;
+  warnings: ConfigWarning[];
 }
 
 export interface RawMempalaceConfig {

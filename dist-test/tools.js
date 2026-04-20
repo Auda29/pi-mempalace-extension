@@ -25,6 +25,7 @@ async function runToolCommand(deps, toolName, args, options) {
         json: options.json,
         logger: deps.logger,
         runtimeConfig: deps.config.runtime,
+        runtime,
         signal: options.signal,
     });
     if (!cliResult.ok) {

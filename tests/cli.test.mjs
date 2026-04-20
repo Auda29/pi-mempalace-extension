@@ -27,3 +27,10 @@ test("collectJsonParseError includes stdout when available", () => {
   assert.match(message, /Failed to parse JSON output/);
   assert.match(message, /\{"broken"/);
 });
+
+test("buildCommandArgs preserves runtime-prefixed mempalace invocation", () => {
+  assert.deepEqual(
+    cliInternal.buildCommandArgs(["-m", "mempalace"], ["status"], false),
+    ["-m", "mempalace", "status"],
+  );
+});

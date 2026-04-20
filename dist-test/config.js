@@ -32,13 +32,15 @@ export async function loadConfig(projectRootOrOptions) {
     const env = options.env ?? process.env;
     const configPath = resolveConfigPath(options.projectRoot, options.configPath);
     const rawConfig = await readRawConfig(configPath);
-    const config = applyEnvOverrides(normalizeConfig(rawConfig), env);
+    const warnings = [];
+    const config = applyEnvOverrides(normalizeConfig(rawConfig, warnings), env);
     return {
         config,
         source: {
             path: configPath,
             exists: rawConfig !== null,
         },
+        warnings,
     };
 }
 export function resolveConfigPath(projectRoot, explicitPath) {
@@ -59,26 +61,26 @@ export function expandHomeDir(inputPath) {
     }
     return inputPath;
 }
-function normalizeConfig(rawConfig) {
+function normalizeConfig(rawConfig, warnings) {
     const mergedConfig = {
         autosave: {
-            enabled: rawConfig?.autosave?.enabled ?? DEFAULT_CONFIG.autosave.enabled,
-            threshold: rawConfig?.autosave?.threshold ?? DEFAULT_CONFIG.autosave.threshold,
+            enabled: coerceBoolean(rawConfig?.autosave?.enabled, DEFAULT_CONFIG.autosave.enabled, "autosave.enabled", warnings),
+            threshold: coercePositiveInteger(rawConfig?.autosave?.threshold, DEFAULT_CONFIG.autosave.threshold, "autosave.threshold", warnings),
         },
         compaction: {
-            preIngest: rawConfig?.compaction?.pre_ingest ?? DEFAULT_CONFIG.compaction.preIngest,
-            timeoutMs: rawConfig?.compaction?.timeout_ms ?? DEFAULT_CONFIG.compaction.timeoutMs,
+            preIngest: coerceBoolean(rawConfig?.compaction?.pre_ingest, DEFAULT_CONFIG.compaction.preIngest, "compaction.pre_ingest", warnings),
+            timeoutMs: coercePositiveInteger(rawConfig?.compaction?.timeout_ms, DEFAULT_CONFIG.compaction.timeoutMs, "compaction.timeout_ms", warnings),
         },
         palace: {
-            dir: normalizeNullablePath(rawConfig?.palace?.dir),
+            dir: normalizeNullablePath(rawConfig?.palace?.dir, "palace.dir", warnings),
         },
         runtime: {
-            pythonOverride: normalizeNullablePath(rawConfig?.runtime?.python_override),
-            encoding: rawConfig?.runtime?.encoding ?? DEFAULT_CONFIG.runtime.encoding,
+            pythonOverride: normalizeNullablePath(rawConfig?.runtime?.python_override, "runtime.python_override", warnings),
+            encoding: coerceNonEmptyString(rawConfig?.runtime?.encoding, DEFAULT_CONFIG.runtime.encoding, "runtime.encoding", warnings),
         },
         logging: {
-            level: normalizeLogLevel(rawConfig?.logging?.level),
-            file: expandHomeDir(rawConfig?.logging?.file ?? DEFAULT_CONFIG.logging.file),
+            level: normalizeLogLevel(rawConfig?.logging?.level, warnings),
+            file: expandHomeDir(coerceNonEmptyString(rawConfig?.logging?.file, DEFAULT_CONFIG.logging.file, "logging.file", warnings)),
         },
     };
     return {
@@ -122,21 +124,34 @@ function applyEnvOverrides(config, env) {
         },
     };
 }
-function normalizeNullablePath(input) {
+function normalizeNullablePath(input, fieldPath, warnings) {
     if (input == null) {
+        return null;
+    }
+    if (typeof input !== "string") {
+        warnings.push({
+            path: fieldPath,
+            message: "Expected a string or null. Falling back to default.",
+        });
         return null;
     }
     const value = input.trim();
     return value.length > 0 ? value : null;
 }
-function normalizeLogLevel(input) {
+function normalizeLogLevel(input, warnings) {
     switch (input) {
         case "debug":
         case "info":
         case "warn":
         case "error":
             return input;
+        case undefined:
+            return DEFAULT_CONFIG.logging.level;
         default:
+            warnings.push({
+                path: "logging.level",
+                message: `Expected one of debug, info, warn or error. Falling back to ${DEFAULT_CONFIG.logging.level}.`,
+            });
             return DEFAULT_CONFIG.logging.level;
     }
 }
@@ -174,4 +189,43 @@ async function pathExists(targetPath) {
     catch {
         return false;
     }
+}
+function coerceBoolean(input, fallback, fieldPath, warnings) {
+    if (typeof input === "boolean") {
+        return input;
+    }
+    if (input === undefined) {
+        return fallback;
+    }
+    warnings.push({
+        path: fieldPath,
+        message: `Expected a boolean. Falling back to ${String(fallback)}.`,
+    });
+    return fallback;
+}
+function coercePositiveInteger(input, fallback, fieldPath, warnings) {
+    if (typeof input === "number" && Number.isInteger(input) && input > 0) {
+        return input;
+    }
+    if (input === undefined) {
+        return fallback;
+    }
+    warnings.push({
+        path: fieldPath,
+        message: `Expected a positive integer. Falling back to ${fallback}.`,
+    });
+    return fallback;
+}
+function coerceNonEmptyString(input, fallback, fieldPath, warnings) {
+    if (typeof input === "string" && input.trim().length > 0) {
+        return input;
+    }
+    if (input === undefined) {
+        return fallback;
+    }
+    warnings.push({
+        path: fieldPath,
+        message: `Expected a non-empty string. Falling back to ${fallback}.`,
+    });
+    return fallback;
 }

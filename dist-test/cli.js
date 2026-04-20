@@ -5,11 +5,12 @@ export async function runMempalace(args, options = {}) {
     const startedAt = Date.now();
     const env = options.env ?? process.env;
     try {
-        const runtime = await resolveRuntime({
-            env,
-            logger: options.logger,
-            runtimeConfig: options.runtimeConfig,
-        });
+        const runtime = options.runtime ??
+            (await resolveRuntime({
+                env,
+                logger: options.logger,
+                runtimeConfig: options.runtimeConfig,
+            }));
         const finalArgs = buildCommandArgs(runtime.args, args, options.json);
         const command = formatCommand(runtime.exe, finalArgs);
         const runtimeEnv = runtime.kind === "python"

@@ -57,6 +57,11 @@ interface PiExtensionApiLike {
   on?: (eventName: string, handler: (...args: any[]) => unknown) => void;
 }
 
+function reportBootstrapFailure(error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`[pi-mempalace-extension] bootstrap failed: ${message}\n`);
+}
+
 function textContent(text: string): PiContentText[] {
   return [{ type: "text", text }];
 }
@@ -184,6 +189,9 @@ async function runPreCompactionIngest(
 export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
   const runtimePromise = createExtensionRuntime({
     projectRoot: pi.projectRoot,
+  }).catch((error) => {
+    reportBootstrapFailure(error);
+    throw error;
   });
 
   for (const tool of createPiToolDefinitions(runtimePromise)) {
@@ -191,7 +199,12 @@ export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
   }
 
   pi.on?.("session_start", async (_event: unknown, ctx?: PiEventContext) => {
-    const runtime = await runtimePromise;
+    const runtime = await runtimePromise.catch(() => null);
+    if (runtime === null) {
+      setStatus(ctx, "MemPalace bootstrap failed, inspect extension logs");
+      return;
+    }
+
     const resolved = await runtime.runtimePromise;
     setStatus(
       ctx,
@@ -202,7 +215,11 @@ export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
   });
 
   pi.on?.("before_agent_start", async (event: BeforeAgentStartEvent) => {
-    const runtime = await runtimePromise;
+    const runtime = await runtimePromise.catch(() => null);
+    if (runtime === null) {
+      return;
+    }
+
     const wakeUpContext = await buildWakeUpPrompt(runtime);
     if (!wakeUpContext) {
       return;
@@ -214,7 +231,11 @@ export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
   });
 
   pi.on?.("context", async (event: ContextEvent) => {
-    const runtime = await runtimePromise;
+    const runtime = await runtimePromise.catch(() => null);
+    if (runtime === null) {
+      return;
+    }
+
     const reminder = consumeAutosaveReminder(
       runtime.config,
       event.sessionId,
@@ -231,7 +252,11 @@ export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
   });
 
   pi.on?.("session_before_compact", async (event: SessionBeforeCompactEvent) => {
-    const runtime = await runtimePromise;
+    const runtime = await runtimePromise.catch(() => null);
+    if (runtime === null) {
+      return;
+    }
+
     const notice = await runPreCompactionIngest(runtime, event);
     if (!notice) {
       return;
@@ -243,16 +268,13 @@ export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
   });
 
   pi.on?.("session_shutdown", async (event: SessionShutdownEvent, ctx?: PiEventContext) => {
-    const runtime = await runtimePromise;
+    const runtime = await runtimePromise.catch(() => null);
     resetAutosaveCounter(event.sessionId);
     setStatus(ctx, undefined);
-    await runtime.logger.flush();
+    await runtime?.logger.flush();
   });
 
   pi.on?.("tool_call", async () => undefined);
 
-  void runtimePromise.catch((error) => {
-    const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`[pi-mempalace-extension] bootstrap failed: ${message}\n`);
-  });
+  void runtimePromise.catch(() => undefined);
 }

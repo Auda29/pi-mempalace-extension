@@ -80,6 +80,7 @@ async function runToolCommand(
     json: options.json,
     logger: deps.logger,
     runtimeConfig: deps.config.runtime,
+    runtime,
     signal: options.signal,
   });
 
