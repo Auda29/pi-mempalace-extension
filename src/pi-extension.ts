@@ -5,6 +5,13 @@ import {
   resolvePreIngestTarget,
 } from "./hooks.js";
 import { createExtensionRuntime, type ExtensionRuntime } from "./index.js";
+import {
+  markHookRegistered,
+  markHookRegistrationFailed,
+  markToolRegistered,
+  markToolRegistrationFailed,
+  resetPiRegistrationHealth,
+} from "./pi-health.js";
 import { createPiToolDefinitions, type PiToolDefinitionLike } from "./tools.js";
 
 interface PiContentText {
@@ -60,6 +67,26 @@ interface PiExtensionApiLike {
 function reportBootstrapFailure(error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   process.stderr.write(`[pi-mempalace-extension] bootstrap failed: ${message}\n`);
+}
+
+function createSafeEventHandler<TArgs extends unknown[]>(
+  runtimePromise: Promise<ExtensionRuntime>,
+  eventName: string,
+  handler: (...args: TArgs) => Promise<unknown> | unknown,
+): (...args: TArgs) => Promise<unknown> {
+  return async (...args: TArgs) => {
+    try {
+      return await handler(...args);
+    } catch (error) {
+      const runtime = await runtimePromise.catch(() => null);
+      const message = error instanceof Error ? error.message : String(error);
+      runtime?.logger.warn("pi-extension", "Pi event handler failed", {
+        eventName,
+        error: message,
+      });
+      return undefined;
+    }
+  };
 }
 
 function textContent(text: string): PiContentText[] {
@@ -187,6 +214,8 @@ async function runPreCompactionIngest(
 }
 
 export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
+  resetPiRegistrationHealth();
+
   const runtimePromise = createExtensionRuntime({
     projectRoot: pi.projectRoot,
   }).catch((error) => {
@@ -195,10 +224,15 @@ export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
   });
 
   for (const tool of createPiToolDefinitions(runtimePromise)) {
-    pi.registerTool?.(tool);
+    try {
+      pi.registerTool?.(tool);
+      markToolRegistered(tool.name);
+    } catch {
+      markToolRegistrationFailed(tool.name);
+    }
   }
 
-  pi.on?.("session_start", async (_event: unknown, ctx?: PiEventContext) => {
+  registerPiEvent(pi, runtimePromise, "session_start", async (_event: unknown, ctx?: PiEventContext) => {
     const runtime = await runtimePromise.catch(() => null);
     if (runtime === null) {
       setStatus(ctx, "MemPalace bootstrap failed, inspect extension logs");
@@ -214,7 +248,7 @@ export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
     );
   });
 
-  pi.on?.("before_agent_start", async (event: BeforeAgentStartEvent) => {
+  registerPiEvent(pi, runtimePromise, "before_agent_start", async (event: BeforeAgentStartEvent) => {
     const runtime = await runtimePromise.catch(() => null);
     if (runtime === null) {
       return;
@@ -230,7 +264,7 @@ export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
     };
   });
 
-  pi.on?.("context", async (event: ContextEvent) => {
+  registerPiEvent(pi, runtimePromise, "context", async (event: ContextEvent) => {
     const runtime = await runtimePromise.catch(() => null);
     if (runtime === null) {
       return;
@@ -251,7 +285,7 @@ export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
     };
   });
 
-  pi.on?.("session_before_compact", async (event: SessionBeforeCompactEvent) => {
+  registerPiEvent(pi, runtimePromise, "session_before_compact", async (event: SessionBeforeCompactEvent) => {
     const runtime = await runtimePromise.catch(() => null);
     if (runtime === null) {
       return;
@@ -267,14 +301,33 @@ export default function mempalacePiExtension(pi: PiExtensionApiLike): void {
     };
   });
 
-  pi.on?.("session_shutdown", async (event: SessionShutdownEvent, ctx?: PiEventContext) => {
+  registerPiEvent(pi, runtimePromise, "session_shutdown", async (event: SessionShutdownEvent, ctx?: PiEventContext) => {
     const runtime = await runtimePromise.catch(() => null);
     resetAutosaveCounter(event.sessionId);
     setStatus(ctx, undefined);
     await runtime?.logger.flush();
   });
 
-  pi.on?.("tool_call", async () => undefined);
+  registerPiEvent(pi, runtimePromise, "tool_call", async () => undefined);
 
   void runtimePromise.catch(() => undefined);
+}
+
+function registerPiEvent<TArgs extends unknown[]>(
+  pi: PiExtensionApiLike,
+  runtimePromise: Promise<ExtensionRuntime>,
+  eventName: string,
+  handler: (...args: TArgs) => Promise<unknown> | unknown,
+): void {
+  if (typeof pi.on !== "function") {
+    markHookRegistrationFailed(eventName);
+    return;
+  }
+
+  try {
+    pi.on(eventName, createSafeEventHandler(runtimePromise, eventName, handler));
+    markHookRegistered(eventName);
+  } catch {
+    markHookRegistrationFailed(eventName);
+  }
 }

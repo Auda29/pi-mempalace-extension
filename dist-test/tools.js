@@ -137,7 +137,7 @@ function getToolSpecs() {
         {
             name: "mempalace_init",
             label: "MemPalace Init",
-            description: "Initialize a new MemPalace directory. If neither path nor cwd is provided, the extension process working directory is used.",
+            description: "Initialize a new MemPalace directory in non-interactive mode. If neither path nor cwd is provided, the extension process working directory is used.",
             parameters: {
                 type: "object",
                 properties: {
@@ -150,7 +150,7 @@ function getToolSpecs() {
                 const toolPath = getOptionalString(input, "path");
                 const cwd = getOptionalString(input, "cwd");
                 const targetPath = toolPath ?? cwd ?? process.cwd();
-                return runToolCommand(deps, "mempalace_init", ["init", targetPath], {
+                return runToolCommand(deps, "mempalace_init", ["init", targetPath, "--yes"], {
                     cwd,
                     json: false,
                     signal,

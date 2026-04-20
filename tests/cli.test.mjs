@@ -45,3 +45,12 @@ test("buildTimeoutMessage includes stderr when available", () => {
     "Command timed out after 15000 ms.",
   );
 });
+
+test("normalizeCliError upgrades interactive EOF failures to a clearer message", () => {
+  const normalized = cliInternal.normalizeCliError(
+    "EOFError: EOF when reading a line",
+  );
+
+  assert.match(normalized, /requested interactive input/i);
+  assert.match(normalized, /--yes/);
+});

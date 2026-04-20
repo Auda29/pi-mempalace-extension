@@ -3,6 +3,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 import { access } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
+import { getPiRegistrationHealth, type PiRegistrationHealth } from "./pi-health.js";
 import { buildResolverEnv, resolveRuntime } from "./resolver.js";
 import type { Logger } from "./logger.js";
 import type { MempalaceConfig, ResolvedRuntime } from "./types.js";
@@ -34,6 +35,7 @@ export interface RunDoctorOptions {
   config: MempalaceConfig;
   env?: NodeJS.ProcessEnv;
   logger?: Logger;
+  registrationHealth?: PiRegistrationHealth;
 }
 
 export async function runDoctor(
@@ -41,6 +43,8 @@ export async function runDoctor(
 ): Promise<DoctorReport> {
   const env = options.env ?? process.env;
   const logger = options.logger;
+  const registrationHealth =
+    options.registrationHealth ?? getPiRegistrationHealth();
   const runtimeResult = await resolveRuntimeForDoctor(options.config, env, logger);
 
   const checks = await Promise.all([
@@ -49,6 +53,7 @@ export async function runDoctor(
     checkMempalaceVersionCommand(runtimeResult, env, options.config),
     checkMempalDir(env, options.config),
     checkWindowsUtf8(runtimeResult, env, options.config),
+    checkPiRegistrations(registrationHealth),
   ]);
 
   logger?.info("doctor", "doctor report generated", {
@@ -394,6 +399,56 @@ async function checkWindowsUtf8(
       fix: 'Retry with PYTHONIOENCODING=utf-8 and PYTHONUTF8=1 in the environment.',
     };
   }
+}
+
+async function checkPiRegistrations(
+  health: PiRegistrationHealth,
+): Promise<DoctorCheck> {
+  const hasToolFailures = health.toolRegistrationFailures.length > 0;
+  const hasHookFailures = health.hookRegistrationFailures.length > 0;
+  const hasAnyRegistration =
+    health.toolsRegistered > 0 || health.hooksRegistered > 0;
+
+  if (!hasAnyRegistration && !hasToolFailures && !hasHookFailures) {
+    return {
+      id: "pi-registrations",
+      title: "Pi tools and hooks registered",
+      status: "warn",
+      summary:
+        "No Pi tool or hook registrations have been observed in this process yet.",
+      fix: "Start the extension inside Pi and re-run the doctor tool after the extension entry has been loaded.",
+    };
+  }
+
+  if (hasToolFailures || hasHookFailures) {
+    return {
+      id: "pi-registrations",
+      title: "Pi tools and hooks registered",
+      status: "fail",
+      summary:
+        "Some Pi tools or hooks failed to register in the current process.",
+      fix: "Inspect the extension logs for registration failures and verify the current Pi host API matches the extension integration.",
+      details: {
+        toolsRegistered: health.toolsRegistered,
+        toolRegistrationFailures: health.toolRegistrationFailures,
+        hooksRegistered: health.hooksRegistered,
+        hookRegistrationFailures: health.hookRegistrationFailures,
+        updatedAt: health.updatedAt,
+      },
+    };
+  }
+
+  return {
+    id: "pi-registrations",
+    title: "Pi tools and hooks registered",
+    status: "pass",
+    summary: `Registered ${health.toolsRegistered} Pi tools and ${health.hooksRegistered} Pi hooks in the current process.`,
+    details: {
+      toolsRegistered: health.toolsRegistered,
+      hooksRegistered: health.hooksRegistered,
+      updatedAt: health.updatedAt,
+    },
+  };
 }
 
 function getPythonLauncherArgs(runtime: ResolvedRuntime): string[] {

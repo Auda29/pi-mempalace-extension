@@ -37,11 +37,12 @@ export async function runMempalace(args, options = {}) {
             timedOut: result.timedOut,
         });
         if (result.exitCode !== 0 || result.failed || result.timedOut) {
+            const normalizedError = normalizeCliError(result.timedOut
+                ? buildTimeoutMessage(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, stderr)
+                : stderr || "MemPalace command failed.");
             return {
                 ok: false,
-                stderr: result.timedOut
-                    ? buildTimeoutMessage(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, stderr)
-                    : stderr || "MemPalace command failed.",
+                stderr: normalizedError,
                 durationMs,
                 command,
             };
@@ -127,8 +128,20 @@ function buildTimeoutMessage(timeoutMs, stderr) {
     }
     return `${baseMessage}\n${stderr}`;
 }
+function normalizeCliError(stderr) {
+    if (!/EOFError:\s*EOF when reading a line/i.test(stderr)) {
+        return stderr;
+    }
+    return [
+        "MemPalace requested interactive input, but Pi tools run non-interactively.",
+        "This command needs a non-interactive CLI path such as `--yes`, or it must be adapted before it can run inside Pi.",
+        "",
+        stderr,
+    ].join("\n");
+}
 export const __internal = {
     buildCommandArgs,
+    normalizeCliError,
     buildTimeoutMessage,
     collectStderr,
     collectJsonParseError,
