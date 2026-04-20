@@ -5,7 +5,7 @@ Diese Taskliste leitet sich aus dem Konzept in `docs/pi-mempalace-extension-konz
 | # | Status | Task |
 |---|---|---|
 | 1 | done | Projektgrundlage aufsetzen: `package.json`, `tsconfig.json`, `esbuild.config.mjs`, `.gitignore`, `src/`, `tests/` und `dist/`-Buildziel vorbereiten, damit die Extension sauber nach `dist/index.js` gebundelt werden kann. |
-| 2 | open | Gemeinsame Basistypen und Konfiguration anlegen: `src/types.ts` und `src/config.ts` erstellen, YAML-Config plus Env-Overrides modellieren und die MVP-Defaults aus dem Konzept abbilden. |
+| 2 | done | Gemeinsame Basistypen und Konfiguration anlegen: `src/types.ts` und `src/config.ts` erstellen, YAML-Config plus Env-Overrides modellieren und die MVP-Defaults aus dem Konzept abbilden. |
 | 3 | open | Minimalen JSONL-Logger implementieren: `src/logger.ts` mit Append-Logging, Log-Leveln und einfacher Rotation bauen, damit Resolver, CLI, Hooks und Doctor frueh nachvollziehbar sind. |
 | 4 | open | Windows-first Runtime-Resolver bauen: `src/resolver.ts` mit der definierten Aufloesungsreihenfolge, Validierungs-Probeaufruf, UTF-8-Env-Injektion und Cache-Datei fuer die gefundene MemPalace-Runtime umsetzen. |
 | 5 | open | Diagnoseroutine zuerst liefern: `src/doctor.ts` plus Slash-Command `/mempalace:doctor` implementieren, damit Python-, MemPalace-, CLI-, `MEMPAL_DIR`- und Windows-Encoding-Probleme frueh sichtbar und behebbar sind. |
