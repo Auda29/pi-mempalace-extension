@@ -164,3 +164,9 @@ function collectJsonParseError(
 
   return stderr ?? "Failed to parse JSON output from MemPalace.";
 }
+
+export const __internal = {
+  buildCommandArgs,
+  collectStderr,
+  collectJsonParseError,
+};

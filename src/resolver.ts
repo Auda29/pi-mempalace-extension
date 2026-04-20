@@ -446,3 +446,7 @@ function ensurePythonRuntimeArgs(args: string[]): string[] {
 
   return [...args, "-m", "mempalace"];
 }
+
+export const __internal = {
+  ensurePythonRuntimeArgs,
+};
