@@ -1,6 +1,7 @@
 # Build output
 dist/
 dist-test/
+*.tgz
 
 # Dependencies
 node_modules/
