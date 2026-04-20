@@ -1,7 +1,11 @@
 {
   "name": "pi-mempalace-extension",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Lean MemPalace integration for the Pi coding agent",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Auda29/pi-mempalace-extension.git"
+  },
   "type": "module",
   "main": "dist/index.js",
   "pi": {
