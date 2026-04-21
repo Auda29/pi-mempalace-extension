@@ -2,6 +2,16 @@
 
 Diese Taskliste leitet sich aus dem Konzept in `docs/pi-mempalace-extension-konzept.md` ab und priorisiert das MVP in einer sinnvollen Umsetzungsreihenfolge.
 
+Sie ist in drei Bloecke gegliedert:
+
+- den urspruenglichen MVP-Umfang
+- den abgeschlossenen `0.2.0`-Polish-Backlog
+- die offenen `0.3.0`-Review-Follow-ups
+
+## MVP-Umfang
+
+Diese Tasks beschreiben den urspruenglichen Aufbau der Extension bis zum ersten veroeffentlichungsfaehigen Stand.
+
 | # | Status | Task |
 |---|---|---|
 | 1 | done | Projektgrundlage aufsetzen: `package.json`, `tsconfig.json`, `esbuild.config.mjs`, `.gitignore`, `src/`, `tests/` und `dist/`-Buildziel vorbereiten, damit die Extension sauber nach `dist/index.js` gebundelt werden kann. |
@@ -17,21 +27,49 @@ Diese Taskliste leitet sich aus dem Konzept in `docs/pi-mempalace-extension-konz
 
 ## 0.2.0 Polish-Backlog
 
-Nicht-blockierende Hinweise aus den 0.1.0-Reviews. Priorisierung: **Hoch** (UX-spuerbar), **Mittel** (Robustheit), **Niedrig** (interne Sauberkeit).
+Nicht-blockierende Hinweise aus den `0.1.0`-Reviews.
+
+Priorisierung:
+
+- **Hoch**: UX-spuerbar
+- **Mittel**: Robustheit
+- **Niedrig**: interne Sauberkeit
 
 Stand nach `0.2.0`: Alle bisher erfassten Polish-Punkte aus diesem Backlog sind umgesetzt.
 
 | # | Prio | Status | Bereich | Task |
 |---|---|---|---|---|
-| 5  | Mittel  | done | Resolver | `MEMPALACE_PYTHON` / `MEMPALACE_VENV` direkt aus `env` werden ohne `expandHomeDir` gelesen. `~/...` wird jetzt defensiv direkt im Resolver expandiert. |
-| 6  | Mittel  | done | Resolver/Doctor | Die starre `mempalace.__version__`-Annahme im Python-Probe wurde durch einen robusteren Versions-Probe mit Fallback auf Paket-Metadaten ersetzt. |
-| 7  | Hoch    | done | Doctor | Fehlgeschlagene Tool- oder Event-Registrierungen loggen nicht mehr nur `warn`. Der Doctor enthaelt jetzt einen eigenen Check fuer registrierte Pi-Tools und Hooks. |
-| 8  | Hoch    | done | CLI-Wrapper | Bei `result.timedOut` wird vorhandener `stderr` jetzt in die Timeout-Meldung einbezogen. |
-| 9  | Niedrig | done | Tools/Events | Doppelte Resolver-Aufloesung pro Aufruf vermeiden. `runMempalace()` akzeptiert jetzt eine bereits aufgeloeste `runtime` und die Pi-Integration nutzt diese Wiederverwendung. |
+| 5 | Mittel | done | Resolver | `MEMPALACE_PYTHON` / `MEMPALACE_VENV` direkt aus `env` werden ohne `expandHomeDir` gelesen. `~/...` wird jetzt defensiv direkt im Resolver expandiert. |
+| 6 | Mittel | done | Resolver/Doctor | Die starre `mempalace.__version__`-Annahme im Python-Probe wurde durch einen robusteren Versions-Probe mit Fallback auf Paket-Metadaten ersetzt. |
+| 7 | Hoch | done | Doctor | Fehlgeschlagene Tool- oder Event-Registrierungen loggen nicht mehr nur `warn`. Der Doctor enthaelt jetzt einen eigenen Check fuer registrierte Pi-Tools und Hooks. |
+| 8 | Hoch | done | CLI-Wrapper | Bei `result.timedOut` wird vorhandener `stderr` jetzt in die Timeout-Meldung einbezogen. |
+| 9 | Niedrig | done | Tools/Events | Doppelte Resolver-Aufloesung pro Aufruf vermeiden. `runMempalace()` akzeptiert jetzt eine bereits aufgeloeste `runtime` und die Pi-Integration nutzt diese Wiederverwendung. |
 | 10 | Niedrig | done | Tools | `mempalace_mine` / `mempalace_init` fallen ohne `path` und `cwd` auf `process.cwd()` der Extension zurueck. Dieser Fallback ist jetzt in den Tool-Descriptions explizit dokumentiert. |
-| 11 | Hoch    | done | Commands | Prompt-Templates escapen User-Input jetzt sauber. Der alte Command-Pfad ist zudem an den aktuellen Plain-Text-CLI-Stand angepasst. |
-| 12 | Mittel  | done | Logger | Zyklische Logger-Kontexte verlieren keine Eintraege mehr. `safeStringify` schuetzt jetzt vor stillen JSON-Fehlern. |
+| 11 | Hoch | done | Commands | Prompt-Templates escapen User-Input jetzt sauber. Der alte Command-Pfad ist zudem an den aktuellen Plain-Text-CLI-Stand angepasst. |
+| 12 | Mittel | done | Logger | Zyklische Logger-Kontexte verlieren keine Eintraege mehr. `safeStringify` schuetzt jetzt vor stillen JSON-Fehlern. |
 | 13 | Niedrig | done | Logger | Cross-Prozess-Rotation ist jetzt ueber einen einfachen Lock-Mechanismus abgesichert, damit parallele Extension-Instanzen Rotationen sauberer koordinieren. |
 | 14 | Niedrig | done | Hosts | Pi-Event-Handler laufen jetzt ueber einen zentralen Safe-Wrapper, der neben synchronen Fehlern auch Promise-Rejections defensiv behandelt und loggt. |
-| 15 | Hoch    | done | Bootstrap | Der Pi-Bootstrap ist fehlertoleranter und degradiert bei Config- oder Init-Problemen sauberer, statt unklar abzubrechen. |
-| 16 | Mittel  | done | Config | Die Config-Normalisierung ist defensiver. Falsche YAML-Typen fallen jetzt mit Warnings auf Defaults zurueck. |
+| 15 | Hoch | done | Bootstrap | Der Pi-Bootstrap ist fehlertoleranter und degradiert bei Config- oder Init-Problemen sauberer, statt unklar abzubrechen. |
+| 16 | Mittel | done | Config | Die Config-Normalisierung ist defensiver. Falsche YAML-Typen fallen jetzt mit Warnings auf Defaults zurueck. |
+
+## 0.3.0 Review-Follow-ups
+
+Konsolidierte Punkte aus den spaeteren Pi-, MemPalace- und Zed/ACP-Reviews.
+
+Fokus:
+
+- sichere Defaults
+- Packaging-Robustheit
+- Host-Kompatibilitaet
+- klarere Dokumentation fuer nicht-native ACP-Nutzung
+
+| # | Prio | Status | Bereich | Task |
+|---|---|---|---|---|
+| 17 | Hoch | todo | Compaction/Hooks | Entscheidung festgelegt: `compaction.pre_ingest` soll standardmaessig auf `false` gehen. Der automatische Pre-Compaction-Ingest darf nicht mehr per Default ueber Session- oder Projektpfad-Fallbacks anspringen, weil das fuer Pi bereits ueberraschend und unter Zed/ACP ohne sichtbares Permission-Gate noch kritischer ist. |
+| 18 | Hoch | todo | Commands/Codebase | Entscheidung festgelegt: `src/commands.ts` und der alte Slash-Command-Pfad sollen entfernt werden. Das ungenutzte Modul inklusive `RuntimePromiseContext` bleibt nicht als Konzept-Altlast im Repo. |
+| 19 | Mittel | todo | Pi Host API | Entscheidung festgelegt: Die Config-Aufloesung an die aktuelle Pi-API annaehern. Nicht auf `pi.projectRoot` vertrauen, sondern `ctx.cwd` bzw. Event-CWD als verifizierten Projektkontext spiegeln und fuer Config-/Pfadauflosung nutzen, mit defensivem Fallback auf `process.cwd()`, falls ein Event keinen `cwd` liefert. |
+| 20 | Mittel | todo | Resolver/Doctor | Entscheidung festgelegt: Option A umsetzen. Die CLI-Probes gegen undokumentierte `--version`-Annahmen haerten und fuer Standalone-CLI-Kandidaten einen defensiveren Probe-Pfad mit Fallback bauen, statt weiter nur am fragilen Versions-Flag zu haengen. |
+| 21 | Mittel | todo | Packaging | `peerDependencies` auf einen kompatiblen Pi-Major einschaerfen statt `>=0.0.0`, damit API-Brueche nicht still akzeptiert werden. |
+| 22 | Mittel | todo | Packaging | `engines.node` in `package.json` ergaenzen, passend zum aktuellen Build-Ziel auf Node 20+, damit inkompatible Laufzeitumgebungen frueh mit einer klaren Meldung scheitern. |
+| 23 | Niedrig | done | Docs | Entscheidung festgelegt: Fuer `0.3.0` keinen eigenen README-Abschnitt fuer Zed/ACP einplanen. Die ACP-Limits bleiben bei den technischen Review-Notizen, werden aber nicht als eigener dokumentierter Workflow in der README ausgebaut. |
+| 24 | Mittel | todo | Docs/Security | `docs/SECURITY.md` und README um zwei explizite Hinweise erweitern: CLI-Logs koennen Queries/Pfade enthalten, und automatischer Pre-Compaction-Ingest kann ohne weitere Bestaetigung Inhalte in den Palace aufnehmen. |
